@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { CheckCircle2, MapPin } from 'lucide-react';
+import { CheckCircle2, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShopHeader } from '@/components/ShopHeader';
-import { prices } from '@/lib/cart';
+import { cart, prices, useCart } from '@/lib/cart';
+import { saveOrder, type OrderLine } from '@/lib/orders';
 import { watches, type WatchTone } from '@/lib/watches';
 
 type Address = { name: string; mobile: string; pincode: string; locality: string; address: string; city: string; state: string; landmark: string; type: 'Home' | 'Work' };
@@ -20,18 +21,44 @@ export const Route = createFileRoute('/checkout')({
 
 function Checkout() {
   const { item } = Route.useSearch();
-  const w = watches.find((x) => x.id === (item ?? 'steel'))!;
+  const fromCart = !item;
+  const c = useCart();
+  const [single, setSingle] = useState(1);
+  const lines: { id: WatchTone; qty: number }[] = fromCart ? c.items : [{ id: item, qty: single }];
+  const setQty = (id: WatchTone, q: number) => { if (fromCart) cart.setQty(id, q); else setSingle(Math.max(1, q)); };
   const [a, setA] = useState<Address>(EMPTY);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [qty, setQty] = useState(1);
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [placed, setPlaced] = useState<{ id: string; total: number; count: number } | null>(null);
+  const [busy, setBusy] = useState(false);
   useEffect(() => { try { const r = localStorage.getItem(KEY); if (r) setA(JSON.parse(r) as Address); } catch { /* ignore */ } }, []);
   const set = (k: keyof Address) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setA({ ...a, [k]: e.target.value });
   const saveAddress = () => {
     if (!a.name.trim() || !/^[6-9]\d{9}$/.test(a.mobile) || !/^\d{6}$/.test(a.pincode) || !a.address.trim() || !a.city.trim() || !a.state.trim()) { toast.error('Fill name, 10-digit mobile, 6-digit pincode, address, city and state'); return; }
     localStorage.setItem(KEY, JSON.stringify(a)); setStep(2);
   };
-  const price = prices[w.id] * qty;
+  const count = lines.reduce((s, l) => s + l.qty, 0);
+  const total = lines.reduce((s, l) => s + l.qty * prices[l.id], 0);
+
+  const placeOrder = async () => {
+    if (lines.length === 0) { toast.error('Your cart is empty'); return; }
+    setBusy(true);
+    const id = `PF${Date.now().toString(36).toUpperCase()}`;
+    const items: OrderLine[] = lines.map((l) => ({ id: l.id, qty: l.qty, price: prices[l.id] }));
+    try {
+      await saveOrder({ id, items, total, payment: 'cod', placedAt: new Date().toISOString(), address: a });
+    } catch { toast.error('Saved on this device only — could not sync to your account'); }
+    if (fromCart) cart.clear();
+    setPlaced({ id, total, count });
+    setBusy(false);
+    toast.success('Order placed!', { icon: <CheckCircle2 /> });
+  };
+
+  if (!placed && lines.length === 0) return <main className="shop-page">
+    <ShopHeader />
+    <div className="co-grid"><section className="co-step"><h2>Your cart is empty</h2><p className="fk-muted">Add a watch to your cart to check out.</p>
+      <Link to="/collection" className="fk-buy co-continue">Browse watches</Link></section></div>
+  </main>;
+
   return <main className="shop-page">
     <ShopHeader />
     <div className="co-grid">
@@ -51,47 +78,47 @@ function Checkout() {
               {(['Home', 'Work'] as const).map((t) => <label key={t}><input type="radio" checked={a.type === t} onChange={() => setA({ ...a, type: t })} /> {t}</label>)}
             </div>
             <button type="button" className="fk-buy co-wide" onClick={saveAddress}>Save and deliver here</button>
-          </div> : <div className="co-summary-line"><MapPin size={16} /><p><b>{a.name}</b> <span className="co-tag">{a.type}</span> {a.mobile}<br />{a.address}, {a.locality && `${a.locality}, `}{a.city}, {a.state} — <b>{a.pincode}</b></p><button type="button" className="co-change" onClick={() => setStep(1)}>Change</button></div>}
+          </div> : <div className="co-summary-line"><MapPin size={16} /><p><b>{a.name}</b> <span className="co-tag">{a.type}</span> {a.mobile}<br />{a.address}, {a.locality && `${a.locality}, `}{a.city}, {a.state} — <b>{a.pincode}</b></p>{!placed && <button type="button" className="co-change" onClick={() => setStep(1)}>Change</button>}</div>}
         </section>
         <section className="co-step">
           <h2><span>2</span> Order summary</h2>
-          {step >= 2 && <div className="co-item">
-            <img src={w.image} alt={w.name} />
-            <div><p className="fk-title co-item-name">{w.name}</p><p className="fk-muted">{w.finish}</p><p className="fk-price">{usd(prices[w.id])}</p>
-              <div className="co-qty"><button type="button" onClick={() => setQty(Math.max(1, qty - 1))}>−</button><span>{qty}</span><button type="button" onClick={() => setQty(qty + 1)}>+</button></div></div>
+          {step >= 2 && !placed && <div className="co-items">
+            {lines.map((l) => {
+              const w = watches.find((x) => x.id === l.id)!;
+              return <div key={l.id} className="co-item">
+                <img src={w.image} alt={w.name} />
+                <div><p className="fk-title co-item-name">{w.name}</p><p className="fk-muted">{w.finish}</p><p className="fk-price">{usd(prices[l.id])}</p>
+                  <div className="co-qty"><button type="button" aria-label="Decrease quantity" onClick={() => setQty(l.id, fromCart ? l.qty - 1 : l.qty - 1)}>−</button><span>{l.qty}</span><button type="button" aria-label="Increase quantity" onClick={() => setQty(l.id, l.qty + 1)}>+</button>
+                    {fromCart && <button type="button" aria-label={`Remove ${w.name}`} onClick={() => cart.setQty(l.id, 0)}><Trash2 size={14} /></button>}</div></div>
+                <span className="co-item-sub">{usd(prices[l.id] * l.qty)}</span>
+              </div>;
+            })}
             {step === 2 && <button type="button" className="fk-buy co-continue" onClick={() => setStep(3)}>Continue</button>}
           </div>}
         </section>
         <section className="co-step">
           <h2><span>3</span> Payment</h2>
-          {step === 3 && !orderId && <div className="co-pay">
+          {step === 3 && !placed && <div className="co-pay">
             <label><input type="radio" checked readOnly /> Cash on delivery — pay when your watch arrives</label>
-            <button type="button" className="fk-buy" onClick={() => {
-              const id = `PF${Date.now().toString(36).toUpperCase()}`;
-              try {
-                const orders = JSON.parse(localStorage.getItem('pf-orders') ?? '[]') as unknown[];
-                orders.push({ id, item: w.id, qty, price, address: a, payment: 'cod', placedAt: new Date().toISOString() });
-                localStorage.setItem('pf-orders', JSON.stringify(orders));
-              } catch { /* ignore */ }
-              setOrderId(id);
-              toast.success('Order placed!', { icon: <CheckCircle2 /> });
-            }}>Place order · {usd(price)}</button>
+            <button type="button" className="fk-buy" disabled={busy} onClick={() => void placeOrder()}>{busy ? 'Placing order…' : `Place order · ${usd(total)}`}</button>
           </div>}
-          {orderId && <div className="co-pay">
+          {placed && <div className="co-pay">
             <p><CheckCircle2 size={18} className="fk-delivery-free" /> <b>Order confirmed!</b></p>
-            <p>Order ID: <b>{orderId}</b></p>
-            <p>Pay <b>{usd(price)}</b> in cash when your {w.name} is delivered to {a.city}. We will call {a.mobile} to confirm.</p>
-            <Link to="/shop/$watchId" params={{ watchId: w.id }} className="fk-buy co-continue">Continue shopping</Link>
+            <p>Order ID: <b>{placed.id}</b></p>
+            <p>Pay <b>{usd(placed.total)}</b> in cash when your {placed.count > 1 ? `${placed.count} watches arrive` : 'watch arrives'} in {a.city}. We will call {a.mobile} to confirm.</p>
+            <Link to="/account" className="fk-buy co-continue">Track my order</Link>
+            <Link to="/collection" className="co-change">Continue shopping</Link>
           </div>}
         </section>
       </div>
-      <aside className="co-price">
+      {!placed && <aside className="co-price">
         <h3>Price details</h3>
-        <div><span>Price ({qty} item{qty > 1 ? 's' : ''})</span><span>{usd(price)}</span></div>
+        {lines.map((l) => { const w = watches.find((x) => x.id === l.id)!; return <div key={l.id}><span>{w.name} × {l.qty}</span><span>{usd(prices[l.id] * l.qty)}</span></div>; })}
+        <div><span>Price ({count} item{count > 1 ? 's' : ''})</span><span>{usd(total)}</span></div>
         <div><span>Delivery charges</span><span className="fk-delivery-free">Free</span></div>
-        <div className="co-total"><span>Total amount</span><span>{usd(price)}</span></div>
-        <Link to="/shop/$watchId" params={{ watchId: w.id }} className="co-change">← Back to product</Link>
-      </aside>
+        <div className="co-total"><span>Total amount</span><span>{usd(total)}</span></div>
+        {item ? <Link to="/shop/$watchId" params={{ watchId: item }} className="co-change">← Back to product</Link> : <Link to="/collection" className="co-change">← Keep shopping</Link>}
+      </aside>}
     </div>
   </main>;
 }
