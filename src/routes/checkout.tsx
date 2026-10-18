@@ -6,6 +6,8 @@ import { ShopHeader } from '@/components/ShopHeader';
 import { cart, prices, useCart } from '@/lib/cart';
 import { saveOrder, type OrderLine } from '@/lib/orders';
 import { watches, type WatchTone } from '@/lib/watches';
+import { useCustomer } from '@/components/CustomerAccounts';
+import { useStock } from '@/lib/inventory';
 
 type Address = { name: string; mobile: string; pincode: string; locality: string; address: string; city: string; state: string; landmark: string; type: 'Home' | 'Work' };
 const EMPTY: Address = { name: '', mobile: '', pincode: '', locality: '', address: '', city: '', state: '', landmark: '', type: 'Home' };
@@ -30,6 +32,10 @@ function Checkout() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [placed, setPlaced] = useState<{ id: string; total: number; count: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const { user, ready } = useCustomer();
+  const stock = useStock();
+  const [codOk, setCodOk] = useState(false);
+  const short = stock ? lines.filter((l) => (stock[l.id] ?? 0) < l.qty) : [];
   useEffect(() => { try { const r = localStorage.getItem(KEY); if (r) setA(JSON.parse(r) as Address); } catch { /* ignore */ } }, []);
   const set = (k: keyof Address) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setA({ ...a, [k]: e.target.value });
   const saveAddress = () => {
@@ -41,12 +47,15 @@ function Checkout() {
 
   const placeOrder = async () => {
     if (lines.length === 0) { toast.error('Your cart is empty'); return; }
+    if (!user) { toast.error('Please sign in to place your order'); return; }
+    if (short.length) { toast.error('Some watches are out of stock — reduce the quantity'); return; }
+    if (!codOk) { toast.error('Please confirm you will answer our confirmation call'); return; }
     setBusy(true);
     const id = `PF${Date.now().toString(36).toUpperCase()}`;
     const items: OrderLine[] = lines.map((l) => ({ id: l.id, qty: l.qty, price: prices[l.id] }));
     try {
       await saveOrder({ id, items, total, payment: 'cod', placedAt: new Date().toISOString(), address: a });
-    } catch { toast.error('Saved on this device only — could not sync to your account'); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not place order'); setBusy(false); return; }
     if (fromCart) cart.clear();
     setPlaced({ id, total, count });
     setBusy(false);
@@ -90,7 +99,7 @@ function Checkout() {
                 <div><p className="fk-title co-item-name">{w.name}</p><p className="fk-muted">{w.finish}</p><p className="fk-price">{usd(prices[l.id])}</p>
                   <div className="co-qty"><button type="button" aria-label="Decrease quantity" onClick={() => setQty(l.id, fromCart ? l.qty - 1 : l.qty - 1)}>−</button><span>{l.qty}</span><button type="button" aria-label="Increase quantity" onClick={() => setQty(l.id, l.qty + 1)}>+</button>
                     {fromCart && <button type="button" aria-label={`Remove ${w.name}`} onClick={() => cart.setQty(l.id, 0)}><Trash2 size={14} /></button>}</div></div>
-                <span className="co-item-sub">{usd(prices[l.id] * l.qty)}</span>
+                {stock && (stock[l.id] ?? 0) < l.qty && <p className="fk-pin-msg is-err">{(stock[l.id] ?? 0) <= 0 ? 'Out of stock' : `Only ${stock[l.id]} left`}</p>}<span className="co-item-sub">{usd(prices[l.id] * l.qty)}</span>
               </div>;
             })}
             {step === 2 && <button type="button" className="fk-buy co-continue" onClick={() => setStep(3)}>Continue</button>}
@@ -100,12 +109,16 @@ function Checkout() {
           <h2><span>3</span> Payment</h2>
           {step === 3 && !placed && <div className="co-pay">
             <label><input type="radio" checked readOnly /> Cash on delivery — pay when your watch arrives</label>
-            <button type="button" className="fk-buy" disabled={busy} onClick={() => void placeOrder()}>{busy ? 'Placing order…' : `Place order · ${usd(total)}`}</button>
+            <label className="fk-muted"><input type="radio" disabled /> UPI / Card / Net banking — coming soon</label>
+            <label><input type="checkbox" checked={codOk} onChange={(e) => setCodOk(e.target.checked)} /> I will answer a confirmation call on {a.mobile} before dispatch</label>
+            {ready && !user && <p className="fk-pin-msg is-err">Please <Link to="/auth">sign in</Link> to place your order so you can track it.</p>}
+            <button type="button" className="fk-buy" disabled={busy || !user || short.length > 0} onClick={() => void placeOrder()}>{busy ? 'Placing order…' : `Place order · ${usd(total)}`}</button>
           </div>}
           {placed && <div className="co-pay">
             <p><CheckCircle2 size={18} className="fk-delivery-free" /> <b>Order confirmed!</b></p>
             <p>Order ID: <b>{placed.id}</b></p>
-            <p>Pay <b>{usd(placed.total)}</b> in cash when your {placed.count > 1 ? `${placed.count} watches arrive` : 'watch arrives'} in {a.city}. We will call {a.mobile} to confirm.</p>
+            <p>Pay <b>{usd(placed.total)}</b> in cash when your {placed.count > 1 ? `${placed.count} watches arrive` : 'watch arrives'} in {a.city}. We will call {a.mobile} to confirm before dispatch. Estimated delivery: 3–5 business days.</p>
+            <Link to="/invoice/$orderId" params={{ orderId: placed.id }} className="co-change">View / print invoice</Link>
             <Link to="/account" className="fk-buy co-continue">Track my order</Link>
             <Link to="/collection" className="co-change">Continue shopping</Link>
           </div>}

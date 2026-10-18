@@ -14,7 +14,11 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CollectionRouteImport } from './routes/collection'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ReturnsRouteImport } from './routes/returns'
+import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
+import { Route as InvoiceOrderIdRouteImport } from './routes/invoice.$orderId'
 import { Route as ShopWatchIdRouteImport } from './routes/shop.$watchId'
 import { Route as WatchesWatchIdRouteImport } from './routes/watches.$watchId'
 
@@ -43,9 +47,29 @@ const CollectionRoute = CollectionRouteImport.update({
   path: '/collection',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReturnsRoute = ReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
+  id: '/shipping-policy',
+  path: '/shipping-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceOrderIdRoute = InvoiceOrderIdRouteImport.update({
+  id: '/invoice/$orderId',
+  path: '/invoice/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopWatchIdRoute = ShopWatchIdRouteImport.update({
@@ -65,7 +89,11 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/collection': typeof CollectionRoute
+  '/contact': typeof ContactRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
+  '/invoice/$orderId': typeof InvoiceOrderIdRoute
   '/shop/$watchId': typeof ShopWatchIdRoute
   '/watches/$watchId': typeof WatchesWatchIdRoute
 }
@@ -75,7 +103,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/collection': typeof CollectionRoute
+  '/contact': typeof ContactRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
+  '/invoice/$orderId': typeof InvoiceOrderIdRoute
   '/shop/$watchId': typeof ShopWatchIdRoute
   '/watches/$watchId': typeof WatchesWatchIdRoute
 }
@@ -86,7 +118,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/collection': typeof CollectionRoute
+  '/contact': typeof ContactRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/returns': typeof ReturnsRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
+  '/invoice/$orderId': typeof InvoiceOrderIdRoute
   '/shop/$watchId': typeof ShopWatchIdRoute
   '/watches/$watchId': typeof WatchesWatchIdRoute
 }
@@ -98,7 +134,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/collection'
+    | '/contact'
     | '/reset-password'
+    | '/returns'
+    | '/shipping-policy'
+    | '/invoice/$orderId'
     | '/shop/$watchId'
     | '/watches/$watchId'
   fileRoutesByTo: FileRoutesByTo
@@ -108,7 +148,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/collection'
+    | '/contact'
     | '/reset-password'
+    | '/returns'
+    | '/shipping-policy'
+    | '/invoice/$orderId'
     | '/shop/$watchId'
     | '/watches/$watchId'
   id:
@@ -118,7 +162,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/checkout'
     | '/collection'
+    | '/contact'
     | '/reset-password'
+    | '/returns'
+    | '/shipping-policy'
+    | '/invoice/$orderId'
     | '/shop/$watchId'
     | '/watches/$watchId'
   fileRoutesById: FileRoutesById
@@ -129,7 +177,11 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   CollectionRoute: typeof CollectionRoute
+  ContactRoute: typeof ContactRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ReturnsRoute: typeof ReturnsRoute
+  ShippingPolicyRoute: typeof ShippingPolicyRoute
+  InvoiceOrderIdRoute: typeof InvoiceOrderIdRoute
   ShopWatchIdRoute: typeof ShopWatchIdRoute
   WatchesWatchIdRoute: typeof WatchesWatchIdRoute
 }
@@ -171,11 +223,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/returns': {
+      id: '/returns'
+      path: '/returns'
+      fullPath: '/returns'
+      preLoaderRoute: typeof ReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-policy': {
+      id: '/shipping-policy'
+      path: '/shipping-policy'
+      fullPath: '/shipping-policy'
+      preLoaderRoute: typeof ShippingPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice/$orderId': {
+      id: '/invoice/$orderId'
+      path: '/invoice/$orderId'
+      fullPath: '/invoice/$orderId'
+      preLoaderRoute: typeof InvoiceOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop/$watchId': {
@@ -201,7 +281,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   CollectionRoute: CollectionRoute,
+  ContactRoute: ContactRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ReturnsRoute: ReturnsRoute,
+  ShippingPolicyRoute: ShippingPolicyRoute,
+  InvoiceOrderIdRoute: InvoiceOrderIdRoute,
   ShopWatchIdRoute: ShopWatchIdRoute,
   WatchesWatchIdRoute: WatchesWatchIdRoute,
 }
