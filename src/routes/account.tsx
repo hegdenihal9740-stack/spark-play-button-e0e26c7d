@@ -54,7 +54,7 @@ function AccountPage() {
           const { steps, index } = orderStatus(o.placedAt);
           const delivered = index === steps.length - 1;
           const qty = o.items.reduce((s, l) => s + l.qty, 0);
-          const title = ws.length === 1 ? ws[0].w.name : `${ws[0]?.w.name ?? 'Order'} + ${ws.length - 1} more`;
+          const title = ws.length === 1 ? ws[0]!.w.name : `${ws[0]?.w.name ?? 'Order'} + ${ws.length - 1} more`;
           return <article key={o.id} className="acc-card acc-order">
             <button type="button" className="acc-order-row" onClick={() => setOpen(open === o.id ? null : o.id)}>
               <span className="acc-order-thumbs">{ws.slice(0, 3).map((l) => <img key={l.id} src={l.w.image} alt={l.w.name} />)}</span>
