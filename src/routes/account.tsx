@@ -43,7 +43,6 @@ function AccountPage() {
           <button type="button" onClick={() => setTab('orders')}><Package size={18} /> My orders <ChevronRight size={16} /></button>
           <button type="button" onClick={() => setTab('wishlist')}><Heart size={18} /> My wishlist <ChevronRight size={16} /></button>
           <Link to="/auth"><UserRound size={18} /> Profile information <ChevronRight size={16} /></Link>
-          <Link to="/admin"><Package size={18} /> Seller dashboard <ChevronRight size={16} /></Link>
           <Link to="/shipping-policy"><Package size={18} /> Shipping policy <ChevronRight size={16} /></Link>
           <Link to="/returns"><Package size={18} /> Returns &amp; refunds <ChevronRight size={16} /></Link>
           <Link to="/contact"><UserRound size={18} /> Contact us <ChevronRight size={16} /></Link>
