@@ -137,10 +137,10 @@ export function FlipkartDetails({
               <button type="button" className="fk-buy" onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); toast.success('Proceeding to checkout'); onOpenChange(false); }}><Zap size={16} /> Buy now</button>
               <button type="button" className="fk-cart" onClick={() => { cart.add(w.id); toast.success(`${w.name} (${dial}) added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
             </div>
-            {asPage && <div className="fk-sticky">
+            {asPage && <div className="fk-sticky" role="region" aria-label="Quick buy">
               <div className="fk-sticky-price"><b>₹{usd(price)}</b><small>Free delivery</small></div>
-              <button type="button" className="fk-cart" onClick={() => { cart.add(w.id); toast.success(`${w.name} added to cart`); }}><ShoppingCart size={16} /> Cart</button>
-              <button type="button" className="fk-buy" onClick={() => { if (onBuy) onBuy(w.id); }}><Zap size={16} /> Buy now</button>
+              <button type="button" className="fk-cart" onClick={() => { cart.add(w.id); toast.success(`${w.name} added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
+              <button type="button" className="fk-buy" onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); }}><Zap size={16} /> Buy now</button>
             </div>}
             <div className="fk-trust">
               <div className="fk-trust-card t-green"><Truck size={22} /><b>Free Delivery</b><span>By {deliveryDate}</span></div>
