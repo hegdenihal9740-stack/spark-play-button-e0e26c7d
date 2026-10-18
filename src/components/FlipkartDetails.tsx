@@ -1,5 +1,6 @@
 import { ShoppingCart, Zap, Star, Tag, ShieldCheck, RotateCcw, Truck, MapPin, Heart } from 'lucide-react';
 import { useWishlist, wishlist } from '@/lib/wishlist';
+import { useStock, stockLabel } from '@/lib/inventory';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
@@ -48,6 +49,9 @@ export function FlipkartDetails({
   const active = pick ?? tone;
   const m = cardMeta[active];
   const w = watches.find((x) => x.id === active)!;
+  const stock = useStock();
+  const left = stock?.[active];
+  const sold = left !== undefined && left <= 0;
   const price = prices[w.id];
   const wish = useWishlist();
   const imgs = [w.image, `${FEAT}${w.id}`, life[w.id], ...extra[w.id]];
@@ -133,14 +137,15 @@ export function FlipkartDetails({
                 <button type="button" key={d} className={`fk-size ${d === dial ? 'is-active' : ''}`} onClick={() => setDial(d)}>{d.replace(' mm', '')}</button>
               ))}</div>
             </div>
+            {left !== undefined && <p className={sold ? 'fk-pin-msg is-err' : left <= 3 ? 'fk-pin-msg is-err' : 'fk-pin-msg is-ok'}>{stockLabel(left)}</p>}
             <div className="fk-actions">
-              <button type="button" className="fk-buy" onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); toast.success('Proceeding to checkout'); onOpenChange(false); }}><Zap size={16} /> Buy now</button>
-              <button type="button" className="fk-cart" onClick={() => { cart.add(w.id); toast.success(`${w.name} (${dial}) added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
+              <button type="button" className="fk-buy" disabled={sold} onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); toast.success('Proceeding to checkout'); onOpenChange(false); }}><Zap size={16} /> Buy now</button>
+              <button type="button" className="fk-cart" disabled={sold} onClick={() => { cart.add(w.id); toast.success(`${w.name} (${dial}) added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
             </div>
             {asPage && <div className="fk-sticky" role="region" aria-label="Quick buy">
               <div className="fk-sticky-price"><b>₹{usd(price)}</b><small>Free delivery</small></div>
-              <button type="button" className="fk-cart" onClick={() => { cart.add(w.id); toast.success(`${w.name} added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
-              <button type="button" className="fk-buy" onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); }}><Zap size={16} /> Buy now</button>
+              <button type="button" className="fk-cart" disabled={sold} onClick={() => { cart.add(w.id); toast.success(`${w.name} added to cart`); }}><ShoppingCart size={16} /> Add to cart</button>
+              <button type="button" className="fk-buy" disabled={sold} onClick={() => { if (onBuy) { onBuy(w.id); return; } cart.add(w.id); }}><Zap size={16} /> Buy now</button>
             </div>}
             <div className="fk-trust">
               <div className="fk-trust-card t-green"><Truck size={22} /><b>Free Delivery</b><span>By {deliveryDate}</span></div>
