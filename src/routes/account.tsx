@@ -5,9 +5,8 @@ import { ShopHeader } from '@/components/ShopHeader';
 import { useCustomer } from '@/components/CustomerAccounts';
 import { cart, prices } from '@/lib/cart';
 import { useWishlist, wishlist } from '@/lib/wishlist';
-import { watches, type WatchTone } from '@/lib/watches';
-
-type Order = { id: string; item: WatchTone; qty: number; price: number; payment: string; placedAt: string; address: { name: string; mobile: string; address: string; city: string; state: string; pincode: string } };
+import { watches } from '@/lib/watches';
+import { loadOrders, orderStatus, type Order } from '@/lib/orders';
 const usd = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const fmt = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -23,7 +22,7 @@ function AccountPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const wish = useWishlist();
-  useEffect(() => { try { setOrders((JSON.parse(localStorage.getItem('pf-orders') ?? '[]') as Order[]).reverse()); } catch { /* ignore */ } }, []);
+  useEffect(() => { let on = true; void loadOrders().then((o) => { if (on) setOrders(o); }).catch(() => {}); return () => { on = false; }; }, [user?.id]);
   const name = String(user?.user_metadata?.['full_name'] ?? user?.user_metadata?.['display_name'] ?? (() => { try { return JSON.parse(localStorage.getItem('pf-customer') ?? 'null')?.name; } catch { return null; } })() ?? 'Guest');
   const back = <button type="button" className="acc-back" onClick={() => { setTab('home'); setOpen(null); }}><ArrowLeft size={16} /> Account</button>;
 
@@ -49,24 +48,32 @@ function AccountPage() {
 
       {tab === 'orders' && <>{back}<h2 className="acc-h">My orders</h2>
         {orders.length === 0 ? <p className="acc-card fk-muted">No orders yet.</p> : orders.map((o) => {
-          const w = watches.find((x) => x.id === o.item)!;
+          const ws = o.items.map((l) => ({ ...l, w: watches.find((x) => x.id === l.id)! })).filter((l) => l.w);
           const placed = new Date(o.placedAt);
           const by = new Date(placed.getTime() + 3 * 86400000);
-          const delivered = Date.now() > by.getTime();
+          const { steps, index } = orderStatus(o.placedAt);
+          const delivered = index === steps.length - 1;
+          const qty = o.items.reduce((s, l) => s + l.qty, 0);
+          const title = ws.length === 1 ? ws[0]!.w.name : `${ws[0]?.w.name ?? 'Order'} + ${ws.length - 1} more`;
           return <article key={o.id} className="acc-card acc-order">
             <button type="button" className="acc-order-row" onClick={() => setOpen(open === o.id ? null : o.id)}>
-              <img src={w.image} alt={w.name} />
-              <div><p className="acc-order-name">{w.name}</p><p className={delivered ? 'fk-delivery-free' : 'acc-status'}>● {delivered ? `Delivered on ${fmt(by)}` : `Confirmed · Delivery by ${fmt(by)}`}</p></div>
+              <span className="acc-order-thumbs">{ws.slice(0, 3).map((l) => <img key={l.id} src={l.w.image} alt={l.w.name} />)}</span>
+              <div><p className="acc-order-name">{title}</p><p className={delivered ? 'fk-delivery-free' : 'acc-status'}>● {delivered ? `Delivered on ${fmt(by)}` : `${steps[index]} · Delivery by ${fmt(by)}`}</p></div>
               <ChevronRight size={18} />
             </button>
-            {open === o.id && <dl className="acc-details">
-              <div><dt>Order ID</dt><dd>{o.id}</dd></div>
-              <div><dt>Ordered on</dt><dd>{fmt(placed)}</dd></div>
-              <div><dt>Quantity</dt><dd>{o.qty}</dd></div>
-              <div><dt>Total</dt><dd>{usd(o.price)}</dd></div>
-              <div><dt>Payment</dt><dd>{o.payment === 'cod' ? 'Cash on delivery' : o.payment}</dd></div>
-              <div><dt>Ship to</dt><dd>{o.address.name}, {o.address.address}, {o.address.city}, {o.address.state} — {o.address.pincode} · {o.address.mobile}</dd></div>
-            </dl>}
+            <ol className="trk" aria-label={`Order status: ${steps[index]}`}>
+              {steps.map((s, i) => <li key={s} className={`trk-step${i <= index ? ' done' : ''}${i === index ? ' current' : ''}`}><span className="trk-dot">{i <= index ? '✓' : i + 1}</span>{s}</li>)}
+            </ol>
+            {open === o.id && <>
+              <div className="acc-lines">{ws.map((l) => <div key={l.id} className="acc-line"><img src={l.w.image} alt="" /><span>{l.w.name} × {l.qty}</span><span>{usd(l.price * l.qty)}</span></div>)}</div>
+              <dl className="acc-details">
+                <div><dt>Order ID</dt><dd>{o.id}</dd></div>
+                <div><dt>Ordered on</dt><dd>{fmt(placed)}</dd></div>
+                <div><dt>Items</dt><dd>{qty}</dd></div>
+                <div><dt>Total</dt><dd>{usd(o.total)}</dd></div>
+                <div><dt>Payment</dt><dd>{o.payment === 'cod' ? 'Cash on delivery' : o.payment}</dd></div>
+                {o.address && <div><dt>Ship to</dt><dd>{o.address.name}, {o.address.address}, {o.address.city}, {o.address.state} — {o.address.pincode} · {o.address.mobile}</dd></div>}
+              </dl></>}
           </article>;
         })}</>}
 
